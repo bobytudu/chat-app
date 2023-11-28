@@ -5,7 +5,7 @@ import { User } from "utils/types/auth";
 // Define a type for the slice state
 interface AuthState {
   value: number;
-  user: User | null;
+  user: (User & { friends: any[] }) | null;
   loading: boolean;
 }
 

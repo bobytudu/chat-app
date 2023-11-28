@@ -128,7 +128,12 @@ function LoginForm() {
             startIcon={<GoogleIcon />}
             onClick={handleGoogleSignIn}
             variant="contained"
-            sx={{ bgcolor: "#DB4437", color: "#fff", marginTop: "20px" }}
+            sx={{
+              bgcolor: "#DB4437",
+              color: "#fff",
+              marginTop: "20px",
+              "&:hover": { bgcolor: "#DB4437" },
+            }}
             fullWidth
           >
             Continue with Google

@@ -10,7 +10,6 @@ import Button from "@mui/material/Button";
 import Tooltip from "@mui/material/Tooltip";
 import MenuItem from "@mui/material/MenuItem";
 import MenuIcon from "@mui/icons-material/Menu";
-import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 
 import { Link, NavLink } from "react-router-dom";
 import { logout } from "redux/reducers/auth.reducer";
@@ -24,26 +23,16 @@ const links = [
     name: "Home",
     path: "/",
   },
-  {
-    name: "Projects",
-    path: "/projects",
-  },
-  {
-    name: "Images",
-    path: "/images",
-  },
-  {
-    name: "Assets",
-    path: "/assets",
-  },
 ];
 const settings = ["Profile", "Account", "Dashboard", "Logout"];
 
 function Topbar() {
   const {
     auth: { user },
+    ws,
   } = useAppSelector((state) => ({
     auth: state.auth,
+    ws: state.ws.ws,
   }));
   const dispatch = useAppDispatch();
   const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(
@@ -172,9 +161,11 @@ function Topbar() {
         </Box>
 
         <Box sx={{ flexGrow: 0, display: "flex", alignItems: "center" }}>
-          <IconButton sx={{ mx: 1 }}>
-            <MoreHorizIcon style={{ width: 25 }} />
-          </IconButton>
+          {ws && (
+            <Typography variant="subtitle1" color="black" sx={{ mr: 1 }}>
+              {ws.id}
+            </Typography>
+          )}
           <Tooltip title="Open settings">
             <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
               <Avatar

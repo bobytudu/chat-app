@@ -24,7 +24,7 @@ export function responsiveFontSizes({ sm, md, lg }: { sm: number; md: number; lg
 
 // ----------------------------------------------------------------------
 
-const FONT_PRIMARY = 'Inter, sans-serif' // Google Font
+const FONT_PRIMARY = 'Sora, sans-serif' // Google Font
 // const FONT_SECONDARY = 'CircularStd, sans-serif'; // Local Font
 
 const typography = {
