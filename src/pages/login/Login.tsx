@@ -96,8 +96,6 @@ function LoginForm() {
       });
   };
 
-  console.log();
-
   return (
     <Page title="Login">
       <Box
@@ -114,13 +112,14 @@ function LoginForm() {
           sx={{
             maxWidth: 400,
             bgcolor: "white",
-            p: 3,
+            p: 5,
             borderRadius: "10px",
             boxShadow: theme.shadows[5],
+            textAlign: "center",
           }}
         >
-          <Typography variant="h3">Brand name</Typography>
-          <Typography variant="h3" sx={{ fontWeight: 400 }}>
+          <Typography variant="h4">Chat App</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 400 }}>
             Log in or Sign up
           </Typography>
           <Button
@@ -186,7 +185,7 @@ function LoginForm() {
               Please check your email for the login link.{" "}
             </Typography>
           )}
-          <Typography variant="subtitle1" sx={{ mt: 1 }}>
+          {/* <Typography variant="subtitle1" sx={{ mt: 2 }}>
             By continuing, you acknowledge that you agree to{" "}
             <a href={"/terms-of-service"} target="_blank" rel="noreferrer">
               Terms of Service
@@ -196,7 +195,7 @@ function LoginForm() {
               Privacy Policy
             </a>
             .
-          </Typography>
+          </Typography> */}
         </Box>
       </Box>
     </Page>

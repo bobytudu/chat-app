@@ -10,19 +10,48 @@ export default function WebsocketProvider({
 }) {
   const dispatch = useAppDispatch();
   React.useEffect(() => {
-    const socket = io("http://localhost:8000");
+    const socket = io("http://localhost:8000", {
+      reconnection: true, // whether to reconnect automatically
+      reconnectionAttempts: 5, // number of reconnection attempts before giving up
+      reconnectionDelay: 1000, // initial delay (ms) before the first reconnection attempt
+      reconnectionDelayMax: 5000, // maximum delay (ms) between reconnection attempts
+      // randomizationFactor: 0.5, // randomization factor for the reconnection delays
+    });
     socket.on("connect", () => {
-      dispatch(setSocket(socket));
+      console.log("connected");
+      dispatch(
+        setSocket({
+          ws: socket,
+          id: socket.id,
+          connected: true,
+        })
+      );
     });
     socket.on("disconnect", () => {
       console.log("disconnected");
-      dispatch(setSocket(null));
+      dispatch(
+        setSocket({
+          ws: null,
+          id: "",
+          connected: false,
+        })
+      );
     });
     socket.on("error", (err) => {
       console.log("error", err);
     });
-    socket.on("message", (data) => {
-      console.log("message", data);
+    socket.on("reconnect_attempt", () => {
+      console.log("reconnect_attempt");
+    });
+    socket.on("reconnect", () => {
+      console.log("reconnect");
+      dispatch(
+        setSocket({
+          ws: socket,
+          id: socket.id,
+          connected: true,
+        })
+      );
     });
     socket.connect();
     return () => {

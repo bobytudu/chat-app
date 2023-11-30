@@ -5,7 +5,7 @@ import { db, firebaseAuth } from "services/firebase";
 import PublicRouter from "./PublicRouter";
 import PrivateRouter from "./PrivateRouter";
 import { useAppSelector } from "redux/hooks";
-import { setUser, stopLoading } from "redux/reducers/auth.reducer";
+import { setUser, setUsers, stopLoading } from "redux/reducers/auth.reducer";
 import Loader from "components/Loader";
 import {
   collection,
@@ -14,7 +14,6 @@ import {
   getDocs,
   setDoc,
   updateDoc,
-  onSnapshot,
 } from "firebase/firestore";
 
 export default function Routes() {
@@ -51,32 +50,25 @@ export default function Routes() {
             if (!users.find((user) => user.uid === userObj.uid)) {
               await setDoc(doc(db, "users", userObj.uid), {
                 ...userObj,
-                friends: [],
               });
             } else {
               const data = await getDoc(doc(db, "users", userObj.uid));
               const user = data.data();
-              console.log(user);
               dispatch(setUser(user));
+              dispatch(
+                setUsers(users.filter((item) => item.uid !== userObj.uid))
+              );
             }
 
             //update socket id
-            if (ws) {
-              await updateDoc(doc(db, "users", userObj.uid), {
+            if (ws && ws.connected) {
+              updateDoc(doc(db, "users", userObj.uid), {
                 ...userObj,
                 socketId: ws.id,
               });
             }
           }
           dispatch(stopLoading());
-        }
-      );
-      return () => unsubscribe();
-    } else {
-      const unsubscribe = onSnapshot(
-        doc(db, "users", `${auth.user.uid}`),
-        (querySnapshot) => {
-          dispatch(setUser(querySnapshot.data()));
         }
       );
       return () => unsubscribe();

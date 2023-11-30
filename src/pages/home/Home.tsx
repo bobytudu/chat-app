@@ -7,20 +7,36 @@ import Box from "@mui/material/Box";
 import List from "@mui/material/List";
 import Avatar from "@mui/material/Avatar";
 import ListItemAvatar from "@mui/material/ListItemAvatar";
+import Typography from "@mui/material/Typography";
 import ListItemText from "@mui/material/ListItemText";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import PersonIcon from "@mui/icons-material/Person";
 import AddIcon from "@mui/icons-material/Add";
+import Tooltip from "@mui/material/Tooltip";
+import Fab from "@mui/material/Fab";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import ListItemButton from "@mui/material/ListItemButton";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useAppSelector } from "redux/hooks";
 import get from "lodash/get";
-import AddUserDialog from "components/dialog/AddUserDialog";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import { v4 as uuid } from "uuid";
+import moment from "moment";
 
 //images
 import bgImg from "assets/background.jpg";
+import {
+  collection,
+  doc,
+  getDocs,
+  query,
+  setDoc,
+  where,
+} from "firebase/firestore";
+import { db } from "services/firebase";
+import { scrollToBottom, scrollToTop } from "utils/functions/helper";
 
 interface CustomListItemProps {
   name: string;
@@ -93,39 +109,101 @@ function CustomListItem({
 }
 
 export default function Home() {
-  const [showAddUserDialog, setShowAddUserDialog] = React.useState(false);
+  const [showScrollTop, setshowScrollTop] = React.useState(false);
+  const [showScrollBottom, setshowScrollBottom] = React.useState(false);
   const [chatMessage, setChatMessage] = React.useState("");
   const { ws, auth } = useAppSelector((state) => ({
     ws: state.ws.ws,
     auth: state.auth,
   }));
-  const chats = [{ type: "request", message: "Hello", msgType: "text" }];
-  const [activeUser, setActiveUser] = React.useState("123@gmail.com");
+  const [chats, setChats] = React.useState<any[]>([]);
+  const [activeUser, setActiveUser] = React.useState("");
 
-  const handleAddNewUser = () => {
-    setShowAddUserDialog(true);
+  const handleActiveUser = async (email: string) => {
+    setActiveUser(email);
+    const query1 = query(
+      collection(db, "chats"),
+      where("from", "==", email),
+      where("to", "==", auth.user?.email)
+    );
+
+    const query2 = query(
+      collection(db, "chats"),
+      where("from", "==", auth.user?.email),
+      where("to", "==", email)
+    );
+
+    // Fetch data for both queries
+    const [querySnapshot1, querySnapshot2] = await Promise.all([
+      getDocs(query1),
+      getDocs(query2),
+    ]);
+    const result = [...querySnapshot1.docs, ...querySnapshot2.docs].map((doc) =>
+      doc.data()
+    );
+    setChats(
+      result.sort(
+        (a, b) =>
+          (new Date(a.timestamp) as any) - (new Date(b.timestamp) as any)
+      )
+    );
+    scrollToBottom("chat-container");
   };
 
-  function handleChatMessage(data: any) {
-    console.log("message", data);
+  React.useEffect(() => {
     if (ws) {
-      ws.send({
-        type: "message",
-        data: {
-          message: data,
-          to: activeUser,
-          from: auth.user?.email,
-        },
-      });
+      const handleMessage = (data: any) => {
+        console.log({ data });
+        setChats((prev) => [...prev, data]);
+        scrollToBottom("chat-container");
+      };
+      ws.on(`response`, handleMessage);
+
+      return () => {
+        ws.off(`response`, handleMessage);
+      };
+    }
+  }, [ws]);
+
+  async function handleChatMessage(data: any) {
+    if (ws) {
+      const msgObj = {
+        id: uuid(),
+        type: "text",
+        from: auth.user?.email,
+        to: activeUser,
+        message: data,
+        timestamp: new Date().toISOString(),
+      };
+      setChatMessage("");
+      ws.emit("msg", msgObj);
+      setChats((prev) => [...prev, msgObj]);
+      await setDoc(doc(db, "chats", msgObj.id), msgObj);
+      scrollToBottom("chat-container");
     }
   }
 
+  React.useEffect(() => {
+    const chatContainer = document.getElementById("chat-container");
+    chatContainer?.addEventListener("scroll", (e) => {
+      const { scrollTop } = chatContainer;
+      if (scrollTop > 100) {
+        setshowScrollTop(true);
+        setshowScrollBottom(false);
+      } else {
+        setshowScrollTop(false);
+        setshowScrollBottom(true);
+      }
+    });
+    return () => {
+      chatContainer?.removeEventListener("scroll", (e) => {
+        // setScrollTop(chatContainer.scrollTop);
+      });
+    };
+  }, []);
+
   return (
     <Page title="Home">
-      <AddUserDialog
-        open={showAddUserDialog}
-        onClose={() => setShowAddUserDialog(false)}
-      />
       <Stack
         direction="row"
         sx={{
@@ -149,37 +227,15 @@ export default function Home() {
               maxWidth: 360,
             }}
           >
-            {auth.user?.friends.map((user) => (
+            {auth.users.map((user) => (
               <CustomListItem
+                key={`${user.email}`}
                 selected={activeUser === user.email}
-                onClick={() => setActiveUser(user.email)}
-                name={user.name}
-                email={user.email}
+                onClick={() => handleActiveUser(`${user.email}`)}
+                name={`${user.displayName}`}
+                email={`${user.email}`}
               />
             ))}
-            <ListItemButton
-              onClick={handleAddNewUser}
-              sx={{
-                "&.Mui-selected": {
-                  backgroundColor: "rgba(255, 255, 255, 0.2)",
-                },
-              }}
-            >
-              <ListItemAvatar>
-                <Avatar sx={{ bgcolor: "rgba(255, 255, 255,0.3)" }}>
-                  <AddIcon />
-                </Avatar>
-              </ListItemAvatar>
-              <ListItemText
-                sx={{
-                  color: "white",
-                  "& .MuiListItemText-secondary": {
-                    color: "rgba(255, 255, 255, 0.8)",
-                  },
-                }}
-                primary="Add New User"
-              />
-            </ListItemButton>
           </List>
         </Box>
         <Box
@@ -189,75 +245,170 @@ export default function Home() {
             position: "relative",
           }}
         >
-          <Container
-            sx={{
-              width: "100%",
-              height: "calc(100% - 74px)",
-              display: "flex",
-              justifyContent: "flex-end",
-              flexDirection: "column",
-              padding: 2,
-            }}
-          >
-            {chats.map((chat) => (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent:
-                    chat.type === "request" ? "flex-end" : "flex-start",
+          {activeUser ? (
+            <>
+              <Box
+                id="chat-container"
+                sx={{
+                  width: "100%",
+                  maxHeight: "calc(100vh - 150px)",
+                  overflowY: "auto",
                 }}
               >
-                <div
-                  style={{
-                    padding: 10,
-                    borderRadius: 10,
-                    background: "rgba(255,255,255,0.5)",
-                    backdropFilter: "blur(12px)",
+                {showScrollTop && (
+                  <Tooltip title="Scroll to top" arrow>
+                    <Fab
+                      onClick={() => scrollToTop("chat-container")}
+                      color="primary"
+                      size="small"
+                      aria-label="add"
+                      sx={{
+                        position: "fixed",
+                        bottom: 100,
+                        right: 20,
+                        borderRadius: "8px",
+                        bgcolor: "rgba(255, 255, 255, 0.8)",
+                        color: "black",
+                        "&:hover": {
+                          bgcolor: "rgba(255, 255, 255, 0.8)",
+                        },
+                      }}
+                    >
+                      <ArrowUpwardIcon />
+                    </Fab>
+                  </Tooltip>
+                )}
+                {showScrollBottom && (
+                  <Tooltip title="Scroll to Bottom" arrow>
+                    <Fab
+                      onClick={() => scrollToBottom("chat-container", 0)}
+                      color="primary"
+                      size="small"
+                      aria-label="add"
+                      sx={{
+                        position: "fixed",
+                        bottom: 100,
+                        right: 20,
+                        borderRadius: "8px",
+                        bgcolor: "rgba(255, 255, 255, 0.8)",
+                        color: "black",
+                        "&:hover": {
+                          bgcolor: "rgba(255, 255, 255, 0.8)",
+                        },
+                      }}
+                    >
+                      <ArrowDownwardIcon />
+                    </Fab>
+                  </Tooltip>
+                )}
+                <Container
+                  sx={{
+                    width: "100%",
+                    height: "calc(100% - 74px)",
+                    maxHeight: "calc(100% - 74px)",
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    flexDirection: "column",
+                    padding: 2,
                   }}
                 >
-                  {chat.message}
-                </div>
-              </div>
-            ))}
-          </Container>
-          <Box
-            sx={{
-              position: "absolute",
-              bottom: 0,
-              width: "100%",
-              height: "74px",
-              background: "rgba(255, 255, 255, 0.1)",
-              backdropFilter: "blur(2px)",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Container>
-              <Stack
-                direction="row"
-                justifyContent="center"
-                alignItems="center"
-                spacing={2}
+                  {chats.map((chat) => {
+                    const email = auth.user?.email;
+                    return (
+                      <div
+                        key={chat.id}
+                        style={{
+                          display: "flex",
+                          justifyContent:
+                            chat.from !== email ? "flex-end" : "flex-start",
+                          marginBottom: 8,
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            padding: "10px",
+                            borderRadius:
+                              chat.from !== email
+                                ? "15px 0px 15px 15px"
+                                : "0px 15px 15px 15px",
+                            background:
+                              chat.from !== email
+                                ? "rgba(255,255,255,0.6)"
+                                : "rgba(255,255,255,1)",
+                            position: "relative",
+                            backdropFilter: "blur(12px)",
+                          }}
+                        >
+                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                            {chat.message}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            sx={{ fontWeight: 600, color: "rgba(0,0,0,0.6)" }}
+                          >
+                            {moment(chat.timestamp).format("hh:mm A")}
+                          </Typography>
+                        </Box>
+                      </div>
+                    );
+                  })}
+                </Container>
+              </Box>
+              <Box
+                sx={{
+                  position: "absolute",
+                  bottom: 0,
+                  width: "100%",
+                  height: "74px",
+                  background: "rgba(255, 255, 255, 0.1)",
+                  backdropFilter: "blur(2px)",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
               >
-                <IconButton>
-                  <AddIcon />
-                </IconButton>
-                <OutlinedInput
-                  value={chatMessage}
-                  onChange={(e) => setChatMessage(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleChatMessage(get(e, "target.value", ""));
-                    }
-                  }}
-                  sx={{ color: "white" }}
-                  fullWidth
-                  placeholder="Type a message"
-                />
-              </Stack>
-            </Container>
-          </Box>
+                <Container>
+                  <Stack
+                    direction="row"
+                    justifyContent="center"
+                    alignItems="center"
+                    spacing={2}
+                  >
+                    <IconButton>
+                      <AddIcon />
+                    </IconButton>
+                    <OutlinedInput
+                      value={chatMessage}
+                      onChange={(e) => setChatMessage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleChatMessage(get(e, "target.value", ""));
+                        }
+                      }}
+                      sx={{ color: "white" }}
+                      fullWidth
+                      placeholder="Type a message"
+                    />
+                  </Stack>
+                </Container>
+              </Box>
+            </>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+                width: "100%",
+                height: "100%",
+              }}
+            >
+              <Typography variant="h5" color="white">
+                Select a user to start chat
+              </Typography>
+            </div>
+          )}
         </Box>
       </Stack>
     </Page>

@@ -5,7 +5,8 @@ import { User } from "utils/types/auth";
 // Define a type for the slice state
 interface AuthState {
   value: number;
-  user: (User & { friends: any[] }) | null;
+  user: User | null;
+  users: User[];
   loading: boolean;
 }
 
@@ -14,6 +15,7 @@ const initialState: AuthState = {
   value: 0,
   user: null,
   loading: true,
+  users: [],
 };
 
 export const authSlice = createSlice({
@@ -26,13 +28,16 @@ export const authSlice = createSlice({
     setUser: (state, payload: PayloadAction<any>) => {
       state.user = payload.payload;
     },
+    setUsers: (state, payload: PayloadAction<any>) => {
+      state.users = payload.payload;
+    },
     logout: (state) => {
       state.user = null;
     },
   },
 });
 
-export const { stopLoading, setUser, logout } = authSlice.actions;
+export const { stopLoading, setUser, logout, setUsers } = authSlice.actions;
 
 // Other code such as selectors can use the imported `RootState` type
 // export const selectCount = ( state: RootState ) => state.counter.value

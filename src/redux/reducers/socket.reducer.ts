@@ -1,13 +1,17 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { Socket, SocketOptions, ManagerOptions } from "socket.io-client";
+import { Socket } from "socket.io-client";
 
 interface SocketSliceType {
-  ws: null | Socket<SocketOptions, ManagerOptions>;
+  ws: null | Socket<any>;
+  id: null | string;
+  connected: boolean;
 }
 
 const initialState: SocketSliceType = {
   ws: null,
+  id: null,
+  connected: false,
 };
 
 export const socketSlice = createSlice({
@@ -15,7 +19,9 @@ export const socketSlice = createSlice({
   initialState,
   reducers: {
     setSocket: (state, payload: PayloadAction<any>) => {
-      state.ws = payload.payload;
+      state.ws = payload.payload.ws;
+      state.id = payload.payload.id;
+      state.connected = payload.payload.connected;
     },
   },
 });

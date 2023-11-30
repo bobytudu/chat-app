@@ -32,7 +32,7 @@ function Topbar() {
     ws,
   } = useAppSelector((state) => ({
     auth: state.auth,
-    ws: state.ws.ws,
+    ws: state.ws,
   }));
   const dispatch = useAppDispatch();
   const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(
@@ -162,9 +162,16 @@ function Topbar() {
 
         <Box sx={{ flexGrow: 0, display: "flex", alignItems: "center" }}>
           {ws && (
-            <Typography variant="subtitle1" color="black" sx={{ mr: 1 }}>
-              {ws.id}
-            </Typography>
+            <Button
+              color={ws.connected ? "success" : "error"}
+              variant="outlined"
+              sx={{
+                mr: 2,
+                color: ws.connected ? "success.main" : "error.main",
+              }}
+            >
+              {ws.connected ? ws.id : "Disconnected"}
+            </Button>
           )}
           <Tooltip title="Open settings">
             <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
